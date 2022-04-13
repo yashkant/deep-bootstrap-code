@@ -1,3 +1,4 @@
+import numpy as np
 from google.cloud import storage
 import torch
 import torch.backends.cudnn as cudnn
@@ -10,9 +11,11 @@ import torch.optim as optim
 from torch.optim import lr_scheduler
 import torch.nn as nn
 
+from common.datasets import load_cifar, TransformingTensorDataset, get_cifar_data_aug, load_cifar500
+import common.models32 as models
 
 
-def get_optimizer(optimizer_name, parameters, lr, momentum=0, weight_decay=0):
+def get_optimizer(optimizer_name, parameters, lr, momentum=0.9, weight_decay=0):
     if optimizer_name == 'sgd':
         return optim.SGD(parameters, lr, momentum=momentum, weight_decay=weight_decay)
     elif optimizer_name == 'nesterov_sgd':
@@ -65,12 +68,12 @@ def get_rrand_model(args, nclasses=10):
     args.num_cells = num_cells
     return model
 
-def get_model32(args, model_name, nchannels=3, nclasses=10, half=False, pretrained_path=None):
+def get_model32(args, model_name, nchannels=3, nclasses=10, half=False, pretrained_path=None, dropout=False):
     ngpus = torch.cuda.device_count()
     print("=> creating model '{}'".format(model_name))
     if model_name.startswith('mlp'): # eg: mlp[512,512,512]
         widths = eval(model_name[3:])
-        model = models.mlp(widths=widths, num_classes=nclasses, pretrained_path=pretrained_path)
+        model = models.mlp(widths=widths, num_classes=nclasses, pretrained_path=pretrained_path, dropout=dropout)
     elif model_name == 'rand5':
         from nas import get_random_model
         num_cells = 5
@@ -84,9 +87,9 @@ def get_model32(args, model_name, nchannels=3, nclasses=10, half=False, pretrain
         model = models.__dict__[model_name](num_classes=nclasses, pretrained_path=pretrained_path)
     else:
         if args.width is not None:
-            model = models.__dict__[model_name](num_classes=nclasses, width=args.width)
+            model = models.__dict__[model_name](num_classes=nclasses, width=args.width, dropout=dropout)
         else:
-            model = models.__dict__[model_name](num_classes=nclasses)
+            model = models.__dict__[model_name](num_classes=nclasses, dropout=dropout)
 
     args.nparams = sum(p.numel() for p in model.parameters() if p.requires_grad)
     print("Num model parameters:", args.nparams)
@@ -137,3 +140,44 @@ def accuracy(output, target, topk=(1,)):
                 correct_k = correct[:k].view(-1).float().sum(0, keepdim=True)
                 res.append(correct_k.mul_(100.0 / batch_size))
         return res
+
+
+def get_imbalanced_data(class_id, dataset, n_total_samples, alpha=0.02):
+    '''
+      Y = dataset['Y'] is NOT one-hot encoded
+    '''
+    x = dataset['X']
+    y = dataset['Y']
+    n = x.shape[0]
+    indices = np.arange(n)
+    np.random.shuffle(indices)
+    classes = np.arange(y.max() + 1)
+    class_max = y.max()
+    class_proportions = int(((1 - alpha) / class_max) * n_total_samples)
+    class_id_proportion = int((alpha * n_total_samples))
+
+    class_id_proportion += (n_total_samples - class_proportions * class_max - class_id_proportion)
+    new_y = np.empty((n_total_samples))
+
+    new_x = np.empty((n_total_samples, x.shape[1], x.shape[2], x.shape[3]), dtype=np.uint8)
+
+    previous_index = 0
+    for i, cls in enumerate(classes):
+        class_x = x[np.where(y == cls)]
+        class_y = y[np.where(y == cls)]
+        if cls == class_id:
+            class_x = class_x[:class_id_proportion]
+            class_y = class_y[:class_id_proportion]
+        else:
+            class_x = class_x[:class_proportions]
+            class_y = class_y[:class_proportions]
+
+        new_x[previous_index: previous_index + len(class_x)] = class_x
+        new_y[previous_index: previous_index + len(class_x)] = class_y
+        previous_index += len(class_x)
+
+    print(previous_index)
+    return new_x, new_y
+
+
+

@@ -64,7 +64,7 @@ class PreActBottleneck(nn.Module):
 
 
 class PreActResNet(nn.Module):
-    def __init__(self, block, num_blocks, num_classes=10, nchannels=3):
+    def __init__(self, block, num_blocks, num_classes=10, nchannels=3, dropout=False):
         super(PreActResNet, self).__init__()
         self.in_planes = 64
 
@@ -73,7 +73,11 @@ class PreActResNet(nn.Module):
         self.layer2 = self._make_layer(block, 128, num_blocks[1], stride=2)
         self.layer3 = self._make_layer(block, 256, num_blocks[2], stride=2)
         self.layer4 = self._make_layer(block, 512, num_blocks[3], stride=2)
-        self.linear = nn.Linear(512*block.expansion, num_classes)
+        layers = [nn.Linear(512*block.expansion, 512*block.expansion), nn.ReLU(inplace=True), nn.Linear(512*block.expansion, num_classes)]
+        if dropout:
+            layers = [nn.Dropout(p=0.5, inplace=True), nn.Linear(512 * block.expansion, 512 * block.expansion), nn.ReLU(inplace=True),
+                      nn.Linear(512 * block.expansion, num_classes)]
+        self.linear = nn.Sequential(*layers)
 
     def _make_layer(self, block, planes, num_blocks, stride):
         strides = [stride] + [1]*(num_blocks-1)
@@ -95,8 +99,8 @@ class PreActResNet(nn.Module):
         return out
 
 
-def preresnet18(num_classes=10):
-    return PreActResNet(PreActBlock, [2,2,2,2],num_classes=num_classes )
+def preresnet18(num_classes=10, dropout=False):
+    return PreActResNet(PreActBlock, [2,2,2,2],num_classes=num_classes, dropout=dropout)
 
 def preresnet34(num_classes=10):
     return PreActResNet(PreActBlock, [3,4,6,3],num_classes=num_classes )

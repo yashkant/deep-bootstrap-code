@@ -23,7 +23,7 @@ from torch.utils.data import TensorDataset
 import torch.optim as optim
 from torch.optim import lr_scheduler
 
-from .utils import AverageMeter
+from utils import AverageMeter
 from common.datasets.imagenet import ImageDataset, load_imgnet_xy, download_imgnet, load_imgnet10, download_dogbird
 from common.datasets.imagenet import load_imgnet10_xy, load_superclasses_xy, FixedSeedDataset
 import torchvision.models as tvmodels

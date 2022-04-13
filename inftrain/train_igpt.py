@@ -21,8 +21,8 @@ from torch.utils.data import TensorDataset, Dataset
 import torch.optim as optim
 from torch.optim import lr_scheduler
 
-from .utils import AverageMeter
-from .utils import get_model32, get_optimizer, get_scheduler
+from utils import AverageMeter
+from utils import get_model32, get_optimizer, get_scheduler
 
 from common.datasets import TransformingTensorDataset, get_cifar_data_aug
 from common.datasets import load_cifar5m

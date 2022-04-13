@@ -1,5 +1,5 @@
 import os
-import wandb
+# import wandb
 
 import argparse
 import random
@@ -26,7 +26,7 @@ from utils import AverageMeter
 from common.datasets import load_cifar, TransformingTensorDataset, get_cifar_data_aug
 from common.datasets import load_cifar550, load_svhn_all, load_svhn, load_cifar5m
 import common.models32 as models
-from utils import get_model32, get_optimizer, get_scheduler
+from utils import get_model32, get_optimizer, get_scheduler, get_imbalanced_data
 
 from common.logging import VanillaLogger
 
@@ -48,6 +48,9 @@ parser.add_argument('--opt', default="sgd", type=str)
 parser.add_argument('--lr', default=0.1, type=float, help='initial learning rate', dest='lr')
 parser.add_argument('--scheduler', default="cosine", type=str, help='lr scheduler')
 parser.add_argument('--sched', default=None, type=str)
+parser.add_argument('--reg', default=None, type=str, help='regularization')
+parser.add_argument('--cls_imb', default=-1, type=int, help='class index to imbalance')
+
 parser.add_argument('--aug', default=0, type=int, help='data-aug (0: none, 1: flips, 2: all)')
 
 parser.add_argument('--epochs', default=100, type=int)
@@ -58,7 +61,6 @@ parser.add_argument('--batches_per_lr_step', default=390, type=int)
 parser.add_argument('--noise', default=0.0, type=float, help='label noise probability (train & test).')
 
 parser.add_argument('--momentum', default=0.0, type=float, help='momentum (0 or 0.9)')
-parser.add_argument('--wd', default=0.0, type=float, help='weight decay')
 
 parser.add_argument('--workers', default=4, type=int, help='number of data loading workers')
 parser.add_argument('--half', default=False, action='store_true', help='training with half precision')
@@ -220,24 +222,46 @@ def main():
     if args.pretrained == 'None':
         args.pretrained = None # hack for caliban
 
-    wandb.init(project=args.proj)
+    # wandb.init(project=args.proj)
     cudnn.benchmark = True
+    tag = f"model:{args.arch}|reg:{args.reg}|iid:{args.iid}|opt:{args.opt}|cls_imb:{args.cls_imb}"
+
+    log_dict = {
+        "args": vars(args),
+    }
 
     #load the model
-    model = get_model32(args, args.arch, half=args.half, nclasses=10, pretrained_path=args.pretrained)
+    if "dropout" in args.reg:
+        dropout=True
+    else:
+        dropout=False
+    model = get_model32(args, args.arch, half=args.half, nclasses=10, pretrained_path=args.pretrained, dropout=dropout)
     # model = torch.nn.DataParallel(model).cuda()
     model.cuda()
 
+    # define loss function (criterion), optimizer and scheduler
+    criterion = nn.CrossEntropyLoss().cuda() if args.loss == 'xent' else mse_loss
+    if "wd" in args.reg:
+        wd = 1e-3
+    else:
+        wd = 0
+    optimizer = get_optimizer(args.opt, model.parameters(), args.lr, 0.9, wd)
+
     # init logging
-    logger = VanillaLogger(args, wandb, hash=True)
+    # logger = VanillaLogger(args, wandb, hash=True)
 
     print('Loading datasets...')
     (X_tr, Y_tr, X_te, Y_te), preproc = get_dataset(args.dataset)
 
     # subsample
     if not args.iid:
+        # skew
+        if args.cls_imb >= 0:
+            data = {"X": X_tr, "Y":Y_tr}
+            X_tr, Y_tr = get_imbalanced_data(args.cls_imb, data, args.nsamps*2)
         I = np.random.permutation(len(X_tr))[:args.nsamps]
         X_tr, Y_tr = X_tr[I], Y_tr[I]
+
 
     # Add noise (optionally)
     Y_tr = add_noise(Y_tr, args.noise)
@@ -263,17 +287,12 @@ def main():
         args.batches_per_lr_step = batches_per_epoch
     num_lr_steps = (args.nbatches) // args.batches_per_lr_step # = epochs (unless --epochs is overridden)
     print(f'Num. total train batches: {args.nbatches}')
-
-
-    # define loss function (criterion), optimizer and scheduler
-    criterion = nn.CrossEntropyLoss().cuda() if args.loss == 'xent' else mse_loss
-    optimizer = get_optimizer(args.opt, model.parameters(), args.lr, args.momentum, args.wd)
     scheduler = get_scheduler(args, args.scheduler, optimizer, num_epochs=num_lr_steps, batches_per_epoch=args.batches_per_lr_step)
 
 
-
     n_tot = 0
-    for i, (images, target) in enumerate(recycle(tr_loader)):
+    log_dict['iters'] = {}
+    for i, (images, target) in tqdm(enumerate(recycle(tr_loader)), total=args.nbatches):
         model.train()
         images, target = cuda_transfer(images, target)
         output = model(images)
@@ -312,10 +331,7 @@ def main():
                 print(f'Batch {i}.\t lr: {lr:.3f}\t Train Loss: {d["Train Loss"]:.4f}\t Train Error: {d["Train Error"]:.3f}\t Test Error: {d["Test Error"]:.3f}')
             else:
                 print(f'Batch {i}.\t lr: {lr:.3f}\t Test Error: {d["Test Error"]:.3f}')
-
-            
-            logger.log_scalars(d)
-            logger.flush()
+            log_dict['iters'][i] = d
 
 
         if (i+1) % args.batches_per_lr_step == 0:
@@ -331,15 +347,20 @@ def main():
             break; # break if small train loss
 
     ## Final logging
-    logger.save_model(model)
+    # logger.save_model(model)
 
     summary = {}
     summary.update({ f'Final Test {k}' : v for k, v in test_all(te_loader, model, criterion).items()})
     summary.update({ f'Final Train {k}' : v for k, v in test_all(tr_loader, model, criterion).items()})
     summary.update({ f'Final CF10 {k}' : v for k, v in test_all(cifar_test, model, criterion).items()})
 
-    logger.log_summary(summary)
-    logger.flush()
+    # logger.log_summary(summary)
+    # logger.flush()
+    log_dict['iters']['last'] = summary
+
+    # save experiments summary
+    log_path = f"results/{tag}.npy"
+    np.save(log_path, log_dict)
 
 
 if __name__ == '__main__':

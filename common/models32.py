@@ -12,12 +12,14 @@ from common import load_state_dict
 class Flatten(nn.Module):
     def forward(self, x): return x.view(x.size(0), -1)
 
-def _mlp(widths=[128,128,128], num_classes=10, indim=32*32*3, batch_norm=True):
+def _mlp(widths=[128,128,128], num_classes=10, indim=32*32*3, batch_norm=True, dropout=False):
     layers = [Flatten()]
     for w in widths:
         layers.append(nn.Linear(indim, w, bias=True))
         if batch_norm:
             layers.append(nn.BatchNorm1d(w))
+        if dropout:
+            layers.append(nn.Dropout(p=0.5, inplace=True))
         layers.append(nn.ReLU(inplace=True))
         indim = w
     layers.append(nn.Linear(indim, num_classes, bias=True))
@@ -39,10 +41,10 @@ def rmlp(**kwargs):
 def mlp5(**kwargs):
     return mlp(widths=[128,128,128,128,128])
 
-def smallCNN(width=64, in_channels=3, num_classes=10):
+def smallCNN(width=64, in_channels=3, num_classes=10, dropout=False):
     c = width
     init_filters = 64
-    return nn.Sequential(
+    layers = [
         # Layer 0
         nn.Conv2d(in_channels, init_filters, kernel_size=3, stride=1, padding=1, bias=False),
         nn.BatchNorm2d(init_filters),
@@ -53,16 +55,38 @@ def smallCNN(width=64, in_channels=3, num_classes=10):
         nn.BatchNorm2d(c),
         nn.ReLU(inplace=True),
         nn.AvgPool2d(2),
-
         Flatten(),
-        nn.Linear(c*16*16, c, bias=False),
+        nn.Linear(c * 16 * 16, c, bias=False),
         nn.BatchNorm1d(c),
         nn.ReLU(inplace=True),
         nn.Linear(c, num_classes, bias=False)
-    )
 
-def mCNN(c=64, in_channels=3, num_classes=10):
-    return mcnn(width=c, in_channels=in_channels, num_classes=num_classes)
+    ]
+
+    if dropout:
+        layers = [
+            # Layer 0
+            nn.Conv2d(in_channels, init_filters, kernel_size=3, stride=1, padding=1, bias=False),
+            nn.BatchNorm2d(init_filters),
+            nn.ReLU(inplace=True),
+            # Layer 1
+            nn.Conv2d(init_filters, c, kernel_size=3, stride=1, padding=1, bias=False),
+            nn.BatchNorm2d(c),
+            nn.ReLU(inplace=True),
+            nn.AvgPool2d(2),
+            Flatten(),
+            nn.Dropout(p=0.5, inplace=True),
+            nn.Linear(c * 16 * 16, c, bias=False),
+            nn.BatchNorm1d(c),
+            nn.ReLU(inplace=True),
+            nn.Linear(c, num_classes, bias=False)
+
+        ]
+
+    return nn.Sequential(*layers)
+
+def mCNN(c=64, in_channels=3, num_classes=10, batch_norm=True):
+    return mcnn(width=c, in_channels=in_channels, num_classes=num_classes, batch_norm=batch_norm)
 
 def mcnn_nobn(**kwargs):
     return mcnn(batch_norm=False, **kwargs)
@@ -102,5 +126,8 @@ def mcnn(width=64, in_channels=3, num_classes=10, batch_norm=True):
         # nn.MaxPool2d(4),
         nn.AdaptiveMaxPool2d(1),
         Flatten(),
+        nn.Dropout(p=0.5, inplace=True),
+        nn.Linear(c*8, c*8, bias=True),
+        nn.ReLU(inplace=True),
         nn.Linear(c*8, num_classes, bias=True)
     )
