@@ -1,7 +1,5 @@
 #!/bin/bash
 
-#vids="dog12 two-dogs exercise dog-zoom dog-frisbee bird bird-white-bg dog-bark pup"
-#vids="two-dogs exercise dog-zoom dog-frisbee bird bird-white-bg dog-bark"
 opts="adam adagrad nesterov_sgd"
 models="mlp[16384,16384,512] preresnet18"
 regs="wd dropout none"
