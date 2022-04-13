@@ -1,6 +1,6 @@
 # Fork Changes
 - Refactored code
-- Added dependencies in environment.txt (but don't use it for creating new env, it contains dependencies carried over from a last project)
+- Added dependencies in environment.txt (**but don't use it for creating new env** it contains dependencies carried over from a last project)
 - Added dropout layers + config and weight decay.
 - Added a script to generate commands multiple configs
 - Removed wandb loggers and added custom logger
