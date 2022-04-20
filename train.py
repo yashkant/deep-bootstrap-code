@@ -22,6 +22,7 @@ from torch.utils.data import TensorDataset
 import torch.optim as optim
 from torch.optim import lr_scheduler
 
+from curriculum import sort_dataset, curriculum_pace
 from utils import AverageMeter
 from common.datasets import load_cifar, TransformingTensorDataset, get_cifar_data_aug
 from common.datasets import load_cifar550, load_svhn_all, load_svhn, load_cifar5m
@@ -48,8 +49,9 @@ parser.add_argument('--opt', default="sgd", type=str)
 parser.add_argument('--lr', default=0.1, type=float, help='initial learning rate', dest='lr')
 parser.add_argument('--scheduler', default="cosine", type=str, help='lr scheduler')
 parser.add_argument('--sched', default=None, type=str)
-parser.add_argument('--reg', default=None, type=str, help='regularization')
+parser.add_argument('--reg', default="", type=str, help='regularization')
 parser.add_argument('--cls_imb', default=-1, type=int, help='class index to imbalance')
+parser.add_argument('--curriculum', default="", type=str, help='regularization')
 
 parser.add_argument('--aug', default=0, type=int, help='data-aug (0: none, 1: flips, 2: all)')
 
@@ -224,7 +226,12 @@ def main():
 
     # wandb.init(project=args.proj)
     cudnn.benchmark = True
-    tag = f"model:{args.arch}|reg:{args.reg}|iid:{args.iid}|opt:{args.opt}|cls_imb:{args.cls_imb}"
+    tag = f"model:{args.arch}|reg:{args.reg}|iid:{args.iid}|opt:{args.opt}|cls_imb:{args.cls_imb}|curriculum:{args.curriculum}"
+    log_path = f"results/{tag}.npy"
+
+    # if os.path.exists(log_path):
+    #     print(f"Already finished.")
+    #     exit()
 
     log_dict = {
         "args": vars(args),
@@ -262,7 +269,6 @@ def main():
         I = np.random.permutation(len(X_tr))[:args.nsamps]
         X_tr, Y_tr = X_tr[I], Y_tr[I]
 
-
     # Add noise (optionally)
     Y_tr = add_noise(Y_tr, args.noise)
     Y_te = add_noise(Y_te, args.noise)
@@ -289,17 +295,29 @@ def main():
     print(f'Num. total train batches: {args.nbatches}')
     scheduler = get_scheduler(args, args.scheduler, optimizer, num_epochs=num_lr_steps, batches_per_epoch=args.batches_per_lr_step)
 
-
     n_tot = 0
     log_dict['iters'] = {}
+    if args.curriculum in ["log", "exp", "step", "linear"]:
+        X_tr_sorted, Y_tr_sorted = sort_dataset(X_tr, Y_tr)
+        trim_X_tr, trim_y_tr = X_tr_sorted, Y_tr_sorted
+
     for i, (images, target) in tqdm(enumerate(recycle(tr_loader)), total=args.nbatches):
+        epoch_idx = i // batches_per_epoch
+        if args.curriculum in ["log", "exp", "step", "linear"]:
+            num_x = curriculum_pace(epoch_idx, args.epochs, len(X_tr), args.curriculum)
+            if num_x != len(trim_X_tr):
+                trim_X_tr, trim_y_tr = X_tr_sorted[:num_x], Y_tr_sorted[:num_x]
+                tr_set = TransformingTensorDataset(trim_X_tr, trim_y_tr,
+                                                   transform=transforms.Compose([preproc, get_data_aug(args.aug)]))
+                tr_loader = torch.utils.data.DataLoader(tr_set, batch_size=args.batchsize,
+                                                        shuffle=True, num_workers=args.workers, pin_memory=True,
+                                                        drop_last=True)  # drop the last batch if it's incomplete (< batch size)
+
         model.train()
         images, target = cuda_transfer(images, target)
         output = model(images)
         loss = criterion(output, target)
-
         n_tot += len(images)
-
         optimizer.zero_grad()
         loss.backward()
         optimizer.step()
@@ -359,7 +377,6 @@ def main():
     log_dict['iters']['last'] = summary
 
     # save experiments summary
-    log_path = f"results/{tag}.npy"
     np.save(log_path, log_dict)
 
 

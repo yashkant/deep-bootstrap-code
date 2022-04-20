@@ -176,6 +176,7 @@ def get_imbalanced_data(class_id, dataset, n_total_samples, alpha=0.02):
         new_y[previous_index: previous_index + len(class_x)] = class_y
         previous_index += len(class_x)
 
+    new_y = torch.Tensor(new_y).to(dataset['Y'].device).int()
     print(previous_index)
     return new_x, new_y
 

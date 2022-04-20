@@ -2,12 +2,11 @@ nohup python train.py --batchsize 1028 --workers 2 --epochs 80 --opt adam --arch
 nohup python train.py --batchsize 1028 --workers 2 --epochs 80 --opt adam --arch 'mlp[16384,16384,512]' --reg wd > logs/log.txt &
 nohup python train.py --batchsize 1028 --workers 2 --epochs 80 --opt adam --arch 'mlp[16384,16384,512]' --reg dropout --iid > logs/log.txt &
 nohup python train.py --batchsize 1028 --workers 2 --epochs 80 --opt adam --arch 'mlp[16384,16384,512]' --reg dropout > logs/log.txt &
----
 
-nohup python train.py --batchsize 1028 --workers 2 --epochs 80 --opt adam --arch 'mlp[16384,16384,512]' --reg none --iid > logs/log.txt &
-nohup python train.py --batchsize 1028 --workers 2 --epochs 80 --opt adam --arch 'mlp[16384,16384,512]' --reg none > logs/log.txt &
-nohup python train.py --batchsize 1028 --workers 2 --epochs 80 --opt adagrad --arch 'mlp[16384,16384,512]' --reg wd --iid > logs/log.txt &
-nohup python train.py --batchsize 1028 --workers 2 --epochs 80 --opt adagrad --arch 'mlp[16384,16384,512]' --reg wd > logs/log.txt &
+# nohup python train.py --batchsize 1028 --workers 2 --epochs 80 --opt adam --arch 'mlp[16384,16384,512]' --reg none --iid > logs/log.txt &
+# nohup python train.py --batchsize 1028 --workers 2 --epochs 80 --opt adam --arch 'mlp[16384,16384,512]' --reg none > logs/log.txt &
+# nohup python train.py --batchsize 1028 --workers 2 --epochs 80 --opt adagrad --arch 'mlp[16384,16384,512]' --reg wd --iid > logs/log.txt &
+# nohup python train.py --batchsize 1028 --workers 2 --epochs 80 --opt adagrad --arch 'mlp[16384,16384,512]' --reg wd > logs/log.txt &
 
 nohup python train.py --batchsize 1028 --workers 2 --epochs 80 --opt adagrad --arch 'mlp[16384,16384,512]' --reg dropout --iid > logs/log.txt &
 nohup python train.py --batchsize 1028 --workers 2 --epochs 80 --opt adagrad --arch 'mlp[16384,16384,512]' --reg dropout > logs/log.txt &
@@ -18,37 +17,49 @@ nohup python train.py --batchsize 1028 --workers 2 --epochs 80 --opt nesterov_sg
 nohup python train.py --batchsize 1028 --workers 2 --epochs 80 --opt nesterov_sgd --arch 'mlp[16384,16384,512]' --reg wd > logs/log.txt &
 nohup python train.py --batchsize 1028 --workers 2 --epochs 80 --opt nesterov_sgd --arch 'mlp[16384,16384,512]' --reg dropout --iid > logs/log.txt &
 nohup python train.py --batchsize 1028 --workers 2 --epochs 80 --opt nesterov_sgd --arch 'mlp[16384,16384,512]' --reg dropout > logs/log.txt &
+
 nohup python train.py --batchsize 1028 --workers 2 --epochs 80 --opt nesterov_sgd --arch 'mlp[16384,16384,512]' --reg none --iid > logs/log.txt &
 nohup python train.py --batchsize 1028 --workers 2 --epochs 80 --opt nesterov_sgd --arch 'mlp[16384,16384,512]' --reg none > logs/log.txt &
+
+---
+
+
+
+
 
 
 nohup python train.py --batchsize 1028 --workers 2 --epochs 80 --opt adam --arch 'preresnet18' --reg wd --iid > logs/log.txt &
 nohup python train.py --batchsize 1028 --workers 2 --epochs 80 --opt adam --arch 'preresnet18' --reg wd > logs/log.txt &
+
+
 nohup python train.py --batchsize 1028 --workers 2 --epochs 80 --opt adam --arch 'preresnet18' --reg dropout --iid > logs/log.txt &
 nohup python train.py --batchsize 1028 --workers 2 --epochs 80 --opt adam --arch 'preresnet18' --reg dropout > logs/log.txt &
 nohup python train.py --batchsize 1028 --workers 2 --epochs 80 --opt adam --arch 'preresnet18' --reg none --iid > logs/log.txt &
 nohup python train.py --batchsize 1028 --workers 2 --epochs 80 --opt adam --arch 'preresnet18' --reg none > logs/log.txt &
----
 
 nohup python train.py --batchsize 1028 --workers 2 --epochs 80 --opt adagrad --arch 'preresnet18' --reg wd --iid > logs/log.txt &
 nohup python train.py --batchsize 1028 --workers 2 --epochs 80 --opt adagrad --arch 'preresnet18' --reg wd > logs/log.txt &
 nohup python train.py --batchsize 1028 --workers 2 --epochs 80 --opt adagrad --arch 'preresnet18' --reg dropout --iid > logs/log.txt &
+
 nohup python train.py --batchsize 1028 --workers 2 --epochs 80 --opt adagrad --arch 'preresnet18' --reg dropout > logs/log.txt &
 nohup python train.py --batchsize 1028 --workers 2 --epochs 80 --opt adagrad --arch 'preresnet18' --reg none --iid > logs/log.txt &
 nohup python train.py --batchsize 1028 --workers 2 --epochs 80 --opt adagrad --arch 'preresnet18' --reg none > logs/log.txt &
+
 nohup python train.py --batchsize 1028 --workers 2 --epochs 80 --opt nesterov_sgd --arch 'preresnet18' --reg wd --iid > logs/log.txt &
 nohup python train.py --batchsize 1028 --workers 2 --epochs 80 --opt nesterov_sgd --arch 'preresnet18' --reg wd > logs/log.txt &
+
 nohup python train.py --batchsize 1028 --workers 2 --epochs 80 --opt nesterov_sgd --arch 'preresnet18' --reg dropout --iid > logs/log.txt &
 nohup python train.py --batchsize 1028 --workers 2 --epochs 80 --opt nesterov_sgd --arch 'preresnet18' --reg dropout > logs/log.txt &
 nohup python train.py --batchsize 1028 --workers 2 --epochs 80 --opt nesterov_sgd --arch 'preresnet18' --reg none --iid > logs/log.txt &
 nohup python train.py --batchsize 1028 --workers 2 --epochs 80 --opt nesterov_sgd --arch 'preresnet18' --reg none > logs/log.txt &
+---
 
 
 
---
+
 nohup python train.py --batchsize 1028 --workers 2 --epochs 80 --opt adam --arch 'mlp[16384,16384,512]' --reg none --iid --cls_imb 0 > logs/log.txt &
 nohup python train.py --batchsize 1028 --workers 2 --epochs 80 --opt adam --arch 'mlp[16384,16384,512]' --reg none --cls_imb 0 > logs/log.txt &
-
 nohup python train.py --batchsize 1028 --workers 2 --epochs 80 --opt adam --arch 'preresnet18' --reg none --iid --cls_imb 0 > logs/log.txt &
 nohup python train.py --batchsize 1028 --workers 2 --epochs 80 --opt adam --arch 'preresnet18' --reg none --cls_imb 0 > logs/log.txt &
+---
 
