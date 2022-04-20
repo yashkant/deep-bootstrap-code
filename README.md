@@ -5,6 +5,7 @@
 - Added a script to generate commands multiple configs
 - Removed wandb loggers and added custom logger
 - Added class imbalanced training
+- Added Curriculum learning with pretrained ResNet18
 
 
 ## Example config
